@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tamagotchi Pet Game with Food Seeking</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      background: #eee;
+      display: block;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      width: 1280px; /* Zoom horizontal */
+      height: 960px; /* Zoom vertical */
+      image-rendering: crisp-edges;
+    }
+    #stats {
+      margin: 10px auto;
+      font-size: 18px;
+      color: #333;
+    }
+    #controls {
+      margin-top: 20px;
+    }
+    button {
+  /* Create a bold, bright gradient background for an arcade feel */
+  background: linear-gradient(145deg, #ffcc00, #ff9900);
+  border: 2px solid #cc6600;
+  border-radius: 12px;
+  width: 100px;
+  height: 100px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+  /* Create a layered shadow to simulate depth */
+  box-shadow: 0 6px 0 #cc6600, 0 8px 12px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  margin: 0 10px;
+}
+
+button:active {
+  /* Simulate a "pressed" button by translating it downwards and reducing the shadow */
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 #cc6600, 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  </style>
+  
+</head>
+<body>
+  <canvas id="gameCanvas" width="640" height="480"></canvas>
+  <!-- Stats panel showing current fullness and happiness -->
+  <div id="stats">Fullness: 50 | Happiness: 50</div>
+  <div id="controls">
+    <button id="feedBtn">Feed</button>
+    <button id="playBtn">Play</button>
+  </div>
+  <!-- Entry point -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
