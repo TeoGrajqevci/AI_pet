@@ -115,6 +115,8 @@ export class Game {
         }
       });
     });
+
+    this.lastPrompt = ""; // Nouveau : stocke le dernier prompt affiché
   }
 
   bindEvents() {
@@ -185,9 +187,24 @@ export class Game {
     this.update(deltaTime);
     this.draw();
     
-    // Update stats panel.
+    // Mise à jour du panneau des stats.
     document.getElementById('stats').innerText =
       `Fullness: ${Math.floor(this.pet.fullness)} | Happiness: ${Math.floor(this.pet.happiness)}`;
+    
+    // Génère le prompt du pet et l'enrichit selon la présence d'objets
+    let masterPrompt = this.pet.getMasterPrompt();
+    if (this.ball) {
+      masterPrompt += ", with a blue ball next to him";
+    }
+    if (this.foods.length > 0) {
+      masterPrompt += ", with an orange pizza next to him";
+    }
+    
+    // Mettre à jour le prompt uniquement s'il a changé
+    if (masterPrompt !== this.lastPrompt) {
+      console.log(masterPrompt);
+      this.lastPrompt = masterPrompt;
+    }
     
     if (!this.gameOver) {
       requestAnimationFrame((timestamp) => this.gameLoop(timestamp));

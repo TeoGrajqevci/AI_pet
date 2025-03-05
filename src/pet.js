@@ -265,6 +265,17 @@ export class Pet {
     return Math.sqrt(dx * dx + dy * dy);
   }
   
+  // Nouvelle méthode pour générer la description du pet.
+  getMasterPrompt() {
+    // Si fullness est inférieur à 50, alors le pet est considéré comme "hungry"
+    let state = (this.fullness >= 50) ? "healthy" : "hungry";
+    // Si happiness est inférieur à 50, on ajoute "and sad"
+    if (this.happiness < 50) {
+      state += " and sad";
+    }
+    return `A cute pink ${state} pet`;
+  }
+
   draw(ctx) {
     // Gather peripheral particle positions.
     let points = this.particles.map(p => ({ x: p.position.x, y: p.position.y }));
