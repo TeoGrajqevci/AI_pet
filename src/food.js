@@ -89,7 +89,16 @@ export class Food {
     // Draw outline
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'brown';
-    ctx.stroke();
+    if (window.borderBlurred) {
+      ctx.save();
+      ctx.filter = 'blur(4px) drop-shadow(0 0 3px white)';
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }

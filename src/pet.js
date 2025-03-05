@@ -66,7 +66,7 @@ export class Pet {
         bodyA: this.particles[i],
         bodyB: this.particles[nextIndex],
         length: 2 * this.baseDistance * Math.sin(Math.PI / this.numPoints),
-        stiffness: 0.5,
+        stiffness: 0.3,
       });
       this.edgeConstraints.push(constraint);
       Composite.add(this.composite, constraint);
@@ -93,7 +93,7 @@ export class Pet {
     this.minScaleFactor = 0.4; // The pet will never be smaller than 50% of its base size
 
     // Initialize noise parameters for the texture
-    this.noiseScale = 0.03; // Scale of the noise pattern
+    this.noiseScale = 0.06; // Scale of the noise pattern
     this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
     this.colorVariation = 40; // Range of color variation
     this.baseColor = { r: 255, g: 182, b: 193 }; // Base pink color (light pink)
@@ -346,10 +346,18 @@ export class Pet {
     }
     
     // Draw outline
-    ctx.lineWidth = 3 * scaleFactor;
-    ctx.strokeStyle = `rgba(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b}, 0.8)`;
-    ctx.stroke();
-    ctx.restore();
+    if (window.borderBlurred) {
+      ctx.save();
+      ctx.filter = 'blur(6px) drop-shadow(0 0 6px white)';
+      ctx.lineWidth = 20 * scaleFactor;
+      ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.lineWidth = 3 * scaleFactor;
+      ctx.strokeStyle = `rgba(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b}, 0.8)`;
+      ctx.stroke();
+    }
     
     // Calculate a scaling factor based on the pet's current size relative to its base size
     // Use the current constraint length which is affected by fullness
@@ -391,7 +399,7 @@ export class Pet {
     }
     
     // Draw the eyes with scaled size.
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = 'rgba(0, 0, 0, 1)';
     if (this.isBlinking) {
       ctx.beginPath();
       ctx.moveTo(leftEyeX - baseEyeSize, leftEyeY);

@@ -64,7 +64,8 @@ export class Game {
               const distance = Math.sqrt(dx * dx + dy * dy);
               const bounceForceMagnitude = 0.05; // À ajuster selon besoin
               if (distance > 0) {
-                const force = { x: (dx / distance) * bounceForceMagnitude, y: (dy / distance) * bounceForceMagnitude };
+                // const force = { x: (dx / distance) * bounceForceMagnitude, y: (dy / distance) * bounceForceMagnitude };
+                const force = { x: dx * bounceForceMagnitude, y: dy * bounceForceMagnitude };
                 Body.applyForce(foodBody, foodBody.position, force);
               }
             } else {
@@ -126,15 +127,15 @@ export class Game {
       
       let x, y, initialVelocity;
       if (Math.random() < 0.5) {
-        // Spawn from left side.
-        x = -20;
+        // Spawn depuis le côté gauche.
+        x = 20;
         y = Math.random() * (this.canvas.height - 100) + 50;
-        initialVelocity = { x: 3, y: 0 };
+        initialVelocity = { x: 0.1, y: 0 }; // vitesse réduite
       } else {
-        // Spawn from right side.
-        x = this.canvas.width + 20;
+        // Spawn depuis le côté droit.
+        x = this.canvas.width - 20;
         y = Math.random() * (this.canvas.height - 100) + 50;
-        initialVelocity = { x: -3, y: 0 };
+        initialVelocity = { x: -0.1, y: 0 }; // vitesse réduite
       }
       const food = new Food(x, y);
       Body.setVelocity(food.body, initialVelocity);

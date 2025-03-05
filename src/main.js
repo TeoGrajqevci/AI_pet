@@ -68,5 +68,10 @@ window.addEventListener('load', () => {
       const playBtn = document.getElementById('playBtn');
       if (playBtn && !playBtn.disabled) playBtn.click();
     }
+    
+    if (key === '1') {
+      // Toggle border blur mode.
+      window.borderBlurred = !window.borderBlurred;
+    }
   });
 });
