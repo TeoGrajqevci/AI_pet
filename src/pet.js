@@ -357,7 +357,7 @@ export class Pet {
     
     // Scale base dimensions according to the pet's body size
     const baseEyeOffsetX = 24 * scaleFactor;
-    const baseEyeSize = 8 * scaleFactor;
+    const baseEyeSize = 20 * scaleFactor;
     const baseMouthOffset = 24 * scaleFactor;
     const baseMouthSize = 12 * scaleFactor;
     

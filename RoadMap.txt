@@ -1,0 +1,5 @@
+----- Ajouter le prompt et gérer les changement du prompt en fonction des actions.
+----- Ajouter des effets sonnors et pourquoi pas une musique.
+----- Tester d'autre types de deformations du pet lorsqu'il a faim. 
+----- Tester d'autres type de yeux et de bouche.
+----- Pourquoi pas avoir la posiblité de pouvoir customiser le pet.
