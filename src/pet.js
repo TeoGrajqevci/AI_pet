@@ -93,9 +93,9 @@ export class Pet {
     this.minScaleFactor = 0.4; // The pet will never be smaller than 50% of its base size
 
     // Initialize noise parameters for the texture
-    this.noiseScale = 0.06; // Scale of the noise pattern
+    this.noiseScale = 0.1; // Scale of the noise pattern
     this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
-    this.colorVariation = 40; // Range of color variation
+    this.colorVariation = 20; // Range of color variation
     
     // Initial color and color name
     this.baseColor = { r: 255, g: 182, b: 193 }; // Base pink color (light pink)
@@ -140,7 +140,7 @@ export class Pet {
   
   // Modified jump: if a direction is provided, jump toward that; else random upward.
   jump(direction) {
-    const forceMagnitude = 1.3; // Force magnitude set to 1.2
+    const forceMagnitude = 5.0; // Force magnitude set to 1.2
     let force;
     if (direction) {
       const mag = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
@@ -231,28 +231,27 @@ export class Pet {
           closest = food;
         }
       }
-      
+      // NEW: Set food target so pupils can look at it.
+      this.foodTarget = closest.body.position;
+
       const dx = closest.body.position.x - this.center.position.x;
-      const dy = closest.body.position.y - this.center.position.y;
+      const dy = closest.body.position.y - this.center.position.x;
       const dist = Math.sqrt(dx * dx + dy * dy);
       
       // Initialize jump timer if needed - always jump towards food
       if (this.nextFoodJumpTime === null) {
-        this.nextFoodJumpTime = randomInRange(0.8, 1.5); // More frequent jumps
+        this.nextFoodJumpTime = randomInRange(0.8, 1.5);
       }
       
-      this.foodJumpTimer += 1/60; // Assuming 60fps, increment by approximately one frame
+      this.foodJumpTimer += 1/60;
       
-      // Jump toward food when timer is up and distance is appropriate
-      // No hunger check - always jump if there's food
-      if (this.foodJumpTimer >= this.nextFoodJumpTime && dist > 50 && dist < 400) {
+      if (this.foodJumpTimer >= this.nextFoodJumpTime && dist > 50) {
         const direction = { x: dx, y: dy };
         this.jump(direction);
         this.foodJumpTimer = 0;
-        this.nextFoodJumpTime = randomInRange(0.8, 1.5); // More frequent jumps
+        this.nextFoodJumpTime = randomInRange(0.8, 1.5);
       }
       
-      // Continue with normal movement toward food
       if (dist > 0) {
         const normX = dx / dist;
         const normY = dy / dist;
@@ -261,7 +260,8 @@ export class Pet {
         Body.applyForce(this.center, this.center.position, { x: normX * forceMag, y: normY * forceMag });
       }
     } else {
-      // Reset food jump timers if no food is available
+      // NEW: Clear food target when no food exists.
+      this.foodTarget = null;
       this.foodJumpTimer = 0;
       this.nextFoodJumpTime = null;
       
@@ -399,14 +399,14 @@ export class Pet {
       ctx.fill();
     } else {
       // Fallback to solid color if pattern creation fails
-      ctx.fillStyle = `rgb(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b})`;
+      ctx.fillStyle = `rgb(${this.baseColor.r}, ${this.baseColor.g}, this.baseColor.b)`;
       ctx.fill();
     }
     
     // Draw outline
     if (window.borderBlurred) {
       ctx.save();
-      ctx.filter = 'blur(6px) drop-shadow(0 0 6px white)';
+      ctx.filter = 'blur(3px) drop-shadow(0 0 6px white)';
       ctx.lineWidth = 20 * scaleFactor;
       ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
       ctx.stroke();
@@ -457,7 +457,7 @@ export class Pet {
     }
     
     // Draw the eyes with scaled size.
-    ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     if (this.isBlinking) {
       ctx.beginPath();
       ctx.moveTo(leftEyeX - baseEyeSize, leftEyeY);
@@ -470,10 +470,43 @@ export class Pet {
       ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI);
       ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI);
       ctx.fill();
+      
+      // Updated pupil drawing: pupils track both ballTarget and foodTarget.
+      const pupilOffsetLimit = baseEyeSize * 0.4; // maximum pupil displacement within the eye
+      let target = null;
+      if (this.ballTarget && this.foodTarget) {
+        target = {
+          x: (this.ballTarget.x + this.foodTarget.x) / 2,
+          y: (this.ballTarget.y + this.foodTarget.y) / 2,
+        };
+      } else if (this.ballTarget) {
+        target = this.ballTarget;
+      } else if (this.foodTarget) {
+        target = this.foodTarget;
+      }
+      let pupilOffset = { x: 0, y: 0 };
+      if (target) {
+        const dx = target.x - this.center.position.x;
+        const dy = target.y - this.center.position.y;
+        const mag = Math.sqrt(dx * dx + dy * dy);
+        if (mag > 0) {
+          pupilOffset = { x: (dx / mag) * pupilOffsetLimit, y: (dy / mag) * pupilOffsetLimit };
+        }
+      }
+      const pupilRadius = baseEyeSize * 0.5;
+      ctx.fillStyle = 'black';
+      // Left pupil
+      ctx.beginPath();
+      ctx.arc(leftEyeX + pupilOffset.x, leftEyeY + pupilOffset.y, pupilRadius, 0, 2 * Math.PI);
+      ctx.fill();
+      // Right pupil
+      ctx.beginPath();
+      ctx.arc(rightEyeX + pupilOffset.x, rightEyeY + pupilOffset.y, pupilRadius, 0, 2 * Math.PI);
+      ctx.fill();
     }
     
     // Draw the mouth with scaled size.
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
     ctx.lineWidth = 5 * scaleFactor; // Increased stroke weight for the mouth
     ctx.beginPath();
     if (this.happiness > 50) {

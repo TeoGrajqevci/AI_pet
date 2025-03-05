@@ -1,4 +1,5 @@
 import { Game } from './game.js';
+import './api.js'
 
 window.addEventListener('load', () => {
   const canvas = document.getElementById('gameCanvas');

@@ -219,18 +219,16 @@ export class Game {
   }
 
   update(deltaTime) {
-    // Update physics engine.
-    Engine.update(this.engine, deltaTime * 1000);
-    
-    // Update pet state.
+    const steps = 10; // Increased simulation steps per frame
+    for (let i = 0; i < steps; i++) {
+      Engine.update(this.engine, (deltaTime * 1000) / steps);
+    }
     this.pet.update(deltaTime);
     
-    // If a play ball exists, have the pet play with it.
     if (this.ball) {
       this.pet.playWithBall(this.ball, deltaTime);
       this.pet.setBallTarget(this.ball.body.position);
     } else {
-      // Otherwise, follow normal movement (e.g., toward food if present).
       this.pet.updateMovement(this.foods);
       this.pet.setBallTarget(null);
     }
