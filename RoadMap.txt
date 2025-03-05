@@ -1,10 +1,10 @@
------ Ajouter le prompt et gérer les changements du prompt en fonction des actions.
------ Ajouter des effets sonnors et pourquoi pas une musique.
+----- Ajouter le prompt et gérer les changements du prompt en fonction des actions.     X
+----- Ajouter des effets sonnors et pourquoi pas une musique.                           
 ----- Changement de couleurs en fontion des stats.
------ Tester d'autre types de deformations du pet lorsqu'il a faim. 
+----- Tester d'autre types de deformations du pet lorsqu'il a faim.                     X
 ----- Tester d'autres types de yeux et de bouche.
 ----- Pourquoi pas avoir la possiblité de pouvoir customiser le pet.
 
 
------ Finir la boite pour les butons
+----- Finir la boite pour les butons                                                    X
 ----- Tester sur l'écran CRT

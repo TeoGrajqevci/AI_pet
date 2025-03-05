@@ -96,10 +96,46 @@ export class Pet {
     this.noiseScale = 0.06; // Scale of the noise pattern
     this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
     this.colorVariation = 40; // Range of color variation
+    
+    // Initial color and color name
     this.baseColor = { r: 255, g: 182, b: 193 }; // Base pink color (light pink)
+    this.colorName = "pink"; // Initial color name
+    
+    // Update color based on initial stats
+    this.updateColor();
     
     // Generate permutation table for noise
     this.perm = buildPermutationTable();
+  }
+  
+  // New method to update pet color based on stats
+  updateColor() {
+    // Mapping colors based on fullness and happiness levels
+    if (this.fullness >= 75 && this.happiness >= 75) {
+      // Very happy and very full → Pink (original color)
+      this.baseColor = { r: 255, g: 182, b: 193 };
+      this.colorName = "pink";
+    } else if (this.fullness >= 50 && this.happiness >= 50) {
+      // Happy and full → Light purple
+      this.baseColor = { r: 216, g: 191, b: 216 };
+      this.colorName = "purple";
+    } else if (this.fullness < 50 && this.happiness >= 50) {
+      // Hungry but happy → Yellow
+      this.baseColor = { r: 255, g: 255, b: 102 };
+      this.colorName = "yellow";
+    } else if (this.fullness >= 50 && this.happiness < 50) {
+      // Full but sad → Blue
+      this.baseColor = { r: 173, g: 216, b: 230 };
+      this.colorName = "blue";
+    } else if (this.fullness < 30 && this.happiness < 30) {
+      // Very hungry and very sad → Gray
+      this.baseColor = { r: 169, g: 169, b: 169 };
+      this.colorName = "gray";
+    } else {
+      // Hungry and sad → Green
+      this.baseColor = { r: 144, g: 238, b: 144 };
+      this.colorName = "green";
+    }
   }
   
   // Modified jump: if a direction is provided, jump toward that; else random upward.
@@ -148,6 +184,9 @@ export class Pet {
       // Normal happiness decrease when not hungry
       this.happiness -= 3 * deltaTime;
     }
+    
+    // Update pet color based on current stats
+    this.updateColor();
     
     if (this.fullness <= 0 || this.happiness <= 0 || this.fullness >= 100) {
       this.isDead = true;
@@ -265,15 +304,23 @@ export class Pet {
     return Math.sqrt(dx * dx + dy * dy);
   }
   
-  // Nouvelle méthode pour générer la description du pet.
+  // Méthode mise à jour pour générer la description du pet avec la couleur actuelle.
   getMasterPrompt() {
-    // Si fullness est inférieur à 50, alors le pet est considéré comme "hungry"
-    let state = (this.fullness >= 50) ? "healthy" : "hungry";
-    // Si happiness est inférieur à 50, on ajoute "and sad"
+    // État basé sur fullness et happiness
+    let state = "";
+    if (this.fullness < 50) {
+      state += "hungry";
+    } else {
+      state += "well-fed";
+    }
+    
     if (this.happiness < 50) {
       state += " and sad";
+    } else {
+      state += " and happy";
     }
-    return `A cute pink ${state} pet`;
+    
+    return `A cute ${this.colorName} ${state} pet`;
   }
 
   draw(ctx) {

@@ -3,11 +3,11 @@ import { buildPermutationTable, noise } from './utils/noiseUtils.js';
 
 export class Food {
   constructor(x, y) {
-    // Create a larger circular food body with a label for collision detection.
-    this.body = Bodies.circle(x, y, 26, { restitution: 0.6, friction: 0.1, label: 'Food' });
+    // Remplacer la création d'un cercle par un polygone à 3 côtés (triangle)
+    this.body = Bodies.polygon(x, y, 3, 36, { restitution: 0.6, friction: 0.1, label: 'Food' });
     
     // Initialize noise parameters for the texture
-    this.radius = 26;
+    this.radius = 36;
     this.noiseScale = 0.1; // Ajusté pour la taille de la nourriture
     this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
     this.colorVariation = 40; // Range of color variation
@@ -63,10 +63,21 @@ export class Food {
     }
     tempCtx.putImageData(imageData, 0, 0);
     
-    // Draw the food with texture
+    // Correction du remplissage : tracer un triangle au lieu d'un cercle
     ctx.save();
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, this.radius, 0, Math.PI * 2);
+    // Calculer les trois sommets du triangle centré en (pos.x, pos.y)
+    const angleOffset = -Math.PI / 2; // démarrer vers le haut
+    for (let i = 0; i < 3; i++) {
+      const angle = angleOffset + i * (2 * Math.PI / 3);
+      const x = pos.x + this.radius * Math.cos(angle);
+      const y = pos.y + this.radius * Math.sin(angle);
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
     ctx.closePath();
     
     // Create pattern from the temporary canvas
@@ -82,7 +93,7 @@ export class Food {
       ctx.fill();
     } else {
       // Fallback to solid color if pattern creation fails
-      ctx.fillStyle = `rgb(${this.baseColor.r}, ${this.baseColor.g}, this.baseColor.b})`;
+      ctx.fillStyle = `rgb(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b})`;
       ctx.fill();
     }
     

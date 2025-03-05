@@ -130,12 +130,12 @@ export class Game {
       let x, y, initialVelocity;
       if (Math.random() < 0.5) {
         // Spawn depuis le côté gauche.
-        x = 20;
+        x = 36;
         y = Math.random() * (this.canvas.height - 100) + 50;
         initialVelocity = { x: 0.1, y: 0 }; // vitesse réduite
       } else {
         // Spawn depuis le côté droit.
-        x = this.canvas.width - 20;
+        x = this.canvas.width - 36;
         y = Math.random() * (this.canvas.height - 100) + 50;
         initialVelocity = { x: -0.1, y: 0 }; // vitesse réduite
       }
@@ -204,6 +204,11 @@ export class Game {
     if (masterPrompt !== this.lastPrompt) {
       console.log(masterPrompt);
       this.lastPrompt = masterPrompt;
+      // Mise à jour de l'élément pour afficher le master prompt.
+      const masterPromptEl = document.getElementById('masterPrompt');
+      if (masterPromptEl) {
+        masterPromptEl.innerText = masterPrompt;
+      }
     }
     
     if (!this.gameOver) {
