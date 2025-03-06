@@ -1,53 +1,53 @@
-import { Bodies, Constraint, Composite, Body } from 'matter-js';
-import { buildPermutationTable, noise } from './utils/noiseUtils.js';
+import { Bodies, Constraint, Composite, Body } from "matter-js";
+import { buildPermutationTable, noise } from "./utils/noiseUtils.js";
 
 // Helper: returns a random number between min and max.
 function randomInRange(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-export class Pet { 
+export class Pet {
   constructor(x, y) {
     this.x = x;
     this.y = y;
     this.fullness = 90;
     this.happiness = 90;
     this.isDead = false;
-    
+
     this.baseDistance = 100;
     this.numPoints = 16;
-    
+
     // Create a composite for the pet.
-    this.composite = Composite.create({ label: 'PetComposite' });
-    
+    this.composite = Composite.create({ label: "PetComposite" });
+
     // Generate a unique collision group for the pet parts.
     const petGroup = Body.nextGroup(true);
-    
+
     // Create the central body (face) and assign it the pet group.
-    this.center = Bodies.circle(x, y, 40, { 
-      friction: 0.1, 
-      restitution: 0.8, 
-      label: 'Pet',
-      collisionFilter: { group: petGroup }
+    this.center = Bodies.circle(x, y, this.baseDistance * 0.5, {
+      friction: 0.1,
+      restitution: 0.8,
+      label: "Pet",
+      collisionFilter: { group: petGroup },
     });
     Composite.add(this.composite, this.center);
-    
+
     // Create peripheral particles in a circle and assign them the same group.
     this.particles = [];
     this.centerConstraints = [];
     for (let i = 0; i < this.numPoints; i++) {
-      const angle = (2 * Math.PI / this.numPoints) * i;
+      const angle = ((2 * Math.PI) / this.numPoints) * i;
       const px = x + this.baseDistance * Math.cos(angle);
       const py = y + this.baseDistance * Math.sin(angle);
-      const particle = Bodies.circle(px, py, 16, { 
-        friction: 0.1, 
-        restitution: 0.8, 
-        label: 'Pet',
-        collisionFilter: { group: petGroup }
+      const particle = Bodies.circle(px, py, 16, {
+        friction: 0.1,
+        restitution: 0.8,
+        label: "Pet",
+        collisionFilter: { group: petGroup },
       });
       this.particles.push(particle);
       Composite.add(this.composite, particle);
-      
+
       const constraint = Constraint.create({
         bodyA: this.center,
         bodyB: particle,
@@ -57,10 +57,25 @@ export class Pet {
       this.centerConstraints.push(constraint);
       Composite.add(this.composite, constraint);
     }
-    
+
     // Create constraints between adjacent peripheral particles.
     this.edgeConstraints = [];
     for (let i = 0; i < this.numPoints; i++) {
+      /*
+      for (let j = 0; j < this.numPoints; j++) {
+        let distX = this.particles[j].position.x - this.particles[i].position.x;
+        let distY = this.particles[j].position.y - this.particles[i].position.y;
+        let dist = Math.sqrt(distX * distX + distY * distY);
+        const constraint = Constraint.create({
+          bodyA: this.particles[i],
+          bodyB: this.particles[j],
+          length: dist,
+          stiffness: 0.1,
+        });
+        this.edgeConstraints.push(constraint);
+        Composite.add(this.composite, constraint);
+      }*/
+
       const nextIndex = (i + 1) % this.numPoints;
       const constraint = Constraint.create({
         bodyA: this.particles[i],
@@ -71,43 +86,47 @@ export class Pet {
       this.edgeConstraints.push(constraint);
       Composite.add(this.composite, constraint);
     }
-    
+
     // (Rest of your initialization for idleTimer, blinkTimer, etc.)
     this.idleTimer = 0;
     this.blinkTimer = 0;
     this.blinkInterval = 3;
     this.blinkDuration = 0.2;
     this.isBlinking = false;
-    
+
     // Timers and target for ball play behavior.
     this.ballJumpTimer = 0;
     this.nextBallJumpTime = null;
     this.ballTarget = null;
-    
+
     // Timers for food jumping behavior when hungry
     this.foodJumpTimer = 0;
     this.nextFoodJumpTime = null;
     this.hungerThreshold = 50; // Define hunger threshold
 
     // Minimum scale factor for the pet size (when fullness is 0)
-    this.minScaleFactor = 0.4; // The pet will never be smaller than 50% of its base size
+    this.minScaleFactor = 0.6; // The pet will never be smaller than 50% of its base size
 
     // Initialize noise parameters for the texture
     this.noiseScale = 0.1; // Scale of the noise pattern
     this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
     this.colorVariation = 20; // Range of color variation
-    
+
     // Initial color and color name
     this.baseColor = { r: 255, g: 182, b: 193 }; // Base pink color (light pink)
     this.colorName = "pink"; // Initial color name
-    
+
     // Update color based on initial stats
     this.updateColor();
-    
+
     // Generate permutation table for noise
     this.perm = buildPermutationTable();
+
+    // New: Initialize soft-body break event properties.
+    this.onBreak = null; // Callback to be set by the user.
+    this.softBodyBroken = false; // To ensure event is fired only once.
   }
-  
+
   // New method to update pet color based on stats
   updateColor() {
     // Mapping colors based on fullness and happiness levels
@@ -137,30 +156,38 @@ export class Pet {
       this.colorName = "green";
     }
   }
-  
+
   // Modified jump: if a direction is provided, jump toward that; else random upward.
   jump(direction) {
-    const forceMagnitude = 5.0; // Force magnitude set to 1.2
+    const forceMagnitude = 40.0; // Force magnitude set to 1.2
     let force;
     if (direction) {
-      const mag = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+      const mag = Math.sqrt(
+        direction.x * direction.x + direction.y * direction.y
+      );
       if (mag > 0) {
-        force = { x: (forceMagnitude * direction.x) / mag, y: (forceMagnitude * direction.y) / mag };
+        force = {
+          x: (forceMagnitude * direction.x) / mag,
+          y: (forceMagnitude * direction.y) / mag,
+        };
       } else {
         force = { x: 0, y: -forceMagnitude };
       }
     } else {
-      const angle = (-Math.PI / 2) + randomInRange(-0.35, 0.35);
-      force = { x: forceMagnitude * Math.cos(angle), y: forceMagnitude * Math.sin(angle) };
+      const angle = -Math.PI / 2 + randomInRange(-0.35, 0.35);
+      force = {
+        x: forceMagnitude * Math.cos(angle),
+        y: forceMagnitude * Math.sin(angle),
+      };
     }
     Body.applyForce(this.center, this.center.position, force);
   }
-  
+
   update(deltaTime) {
     if (this.isDead) return;
-    
+
     this.idleTimer += deltaTime;
-    
+
     // Blink logic.
     this.blinkTimer += deltaTime;
     if (!this.isBlinking && this.blinkTimer >= this.blinkInterval) {
@@ -170,47 +197,124 @@ export class Pet {
       this.isBlinking = false;
       this.blinkTimer = 0;
     }
-    
+
     // Decrease fullness and happiness.
     this.fullness -= 3 * deltaTime;
-    
+
     // If pet is hungry (fullness < 50), happiness decreases faster
     if (this.fullness < 50) {
       // Calculate hunger factor (0-1 range)
       const hungerFactor = (50 - this.fullness) / 50;
       // Happiness decreases faster when hungrier (up to 2x faster)
-      this.happiness -= (3 + (3 * hungerFactor)) * deltaTime;
+      this.happiness -= (3 + 3 * hungerFactor) * deltaTime;
     } else {
       // Normal happiness decrease when not hungry
       this.happiness -= 3 * deltaTime;
     }
-    
+
     // Update pet color based on current stats
     this.updateColor();
-    
+
     if (this.fullness <= 0 || this.happiness <= 0 || this.fullness >= 100) {
       this.isDead = true;
       return;
     }
-    
+
     // Adjust constraints based on fullness, with a minimum size threshold
     // The scale factor goes from minScaleFactor (when fullness=0) to 2.0 (when fullness=100)
     const minScale = this.minScaleFactor;
-    const maxScale = 1.8;
-    const scaleFactor = minScale + ((maxScale - minScale) * (this.fullness / 100));
-    
+    const maxScale = 1.5;
+    const scaleFactor =
+      minScale + (maxScale - minScale) * (this.fullness / 100);
+
     // Apply the scale factor to the constraint lengths
     const targetLength = this.baseDistance * scaleFactor;
     for (const constraint of this.centerConstraints) {
       constraint.length = targetLength;
     }
-    
+
     const edgeTarget = 2 * targetLength * Math.sin(Math.PI / this.numPoints);
     for (const constraint of this.edgeConstraints) {
       constraint.length = edgeTarget;
     }
+
+    // NEW: Check if the soft body is breaking
+    this.checkBreak();
+    // NEW: Console log the soft body status
+    // console.log("Soft body broken:", this.softBodyBroken);
   }
-  
+
+  // NEW: Check if any particle deviates significantly from the center.
+  checkBreak() {
+    if (this.softBodyBroken) return;
+    const expectedLength = this.centerConstraints[0].length;
+    const tolerance = 3;
+    for (const particle of this.particles) {
+      const d = this._distance(this.center.position, particle.position);
+      if (d > expectedLength * tolerance) {
+        this.softBodyBroken = true;
+        this.resetGeometry(); // Reset the pet's geometry.
+        if (this.onBreak) this.onBreak();
+        break;
+      }
+    }
+  }
+
+  resetGeometry() {
+    Composite.clear(this.composite, false);
+
+    this.center = Bodies.circle(this.x, this.y, 40, {
+      friction: 0.1,
+      restitution: 0.8,
+      label: "Pet",
+      collisionFilter: { group: Body.nextGroup(true) },
+    });
+    Composite.add(this.composite, this.center);
+
+    // Re-create peripheral particles and center constraints.
+    this.particles = [];
+    this.centerConstraints = [];
+    for (let i = 0; i < this.numPoints; i++) {
+      const angle = ((2 * Math.PI) / this.numPoints) * i;
+      const px = this.x + this.baseDistance * Math.cos(angle);
+      const py = this.y + this.baseDistance * Math.sin(angle);
+      const particle = Bodies.circle(px, py, 16, {
+        friction: 0.1,
+        restitution: 0.8,
+        label: "Pet",
+        collisionFilter: { group: Body.nextGroup(true) },
+      });
+      this.particles.push(particle);
+      Composite.add(this.composite, particle);
+
+      const constraint = Constraint.create({
+        bodyA: this.center,
+        bodyB: particle,
+        length: this.baseDistance,
+        stiffness: 0.01,
+      });
+      this.centerConstraints.push(constraint);
+      Composite.add(this.composite, constraint);
+    }
+
+    // Re-create edge constraints.
+    this.edgeConstraints = [];
+    for (let i = 0; i < this.numPoints; i++) {
+      const nextIndex = (i + 1) % this.numPoints;
+      const constraint = Constraint.create({
+        bodyA: this.particles[i],
+        bodyB: this.particles[nextIndex],
+        length: 2 * this.baseDistance * Math.sin(Math.PI / this.numPoints),
+        stiffness: 0.3,
+      });
+      this.edgeConstraints.push(constraint);
+      Composite.add(this.composite, constraint);
+    }
+
+    // Reset broken status.
+    this.softBodyBroken = false;
+  }
+
   // Called when pet eats food.
   eatFood() {
     this.fullness += 15;
@@ -218,7 +322,7 @@ export class Pet {
     this.happiness += 5;
     if (this.happiness > 100) this.happiness = 100;
   }
-  
+
   // When not playing with the ball, use normal movement (e.g., toward food).
   updateMovement(foods) {
     if (foods.length > 0) {
@@ -235,50 +339,57 @@ export class Pet {
       this.foodTarget = closest.body.position;
 
       const dx = closest.body.position.x - this.center.position.x;
-      const dy = closest.body.position.y - this.center.position.x;
+      const dy = closest.body.position.x - this.center.position.x;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      
+
       // Initialize jump timer if needed - always jump towards food
       if (this.nextFoodJumpTime === null) {
         this.nextFoodJumpTime = randomInRange(0.8, 1.5);
       }
-      
-      this.foodJumpTimer += 1/60;
-      
+
+      this.foodJumpTimer += 1 / 60;
+
       if (this.foodJumpTimer >= this.nextFoodJumpTime && dist > 50) {
         const direction = { x: dx, y: dy };
         this.jump(direction);
         this.foodJumpTimer = 0;
         this.nextFoodJumpTime = randomInRange(0.8, 1.5);
       }
-      
+
       if (dist > 0) {
         const normX = dx / dist;
         const normY = dy / dist;
-        const speedFactor = ((100 - this.fullness) / 100) + 0.5;
+        const speedFactor = (100 - this.fullness) / 100 + 0.5;
         const forceMag = 0.0005 * speedFactor;
-        Body.applyForce(this.center, this.center.position, { x: normX * forceMag, y: normY * forceMag });
+        Body.applyForce(this.center, this.center.position, {
+          x: normX * forceMag,
+          y: normY * forceMag,
+        });
       }
     } else {
       // NEW: Clear food target when no food exists.
       this.foodTarget = null;
       this.foodJumpTimer = 0;
       this.nextFoodJumpTime = null;
-      
-      const randomForce = { x: (Math.random() - 0.5) * 0.0002, y: (Math.random() - 0.5) * 0.0002 };
+
+      const randomForce = {
+        x: (Math.random() - 0.5) * 0.0002,
+        y: (Math.random() - 0.5) * 0.0002,
+      };
       Body.applyForce(this.center, this.center.position, randomForce);
     }
   }
-  
+
   // New method: when a play ball is present, the pet plays with it.
   playWithBall(ball, deltaTime) {
     // Gradually increase happiness.
     this.happiness += 2 * deltaTime;
     if (this.happiness > 100) this.happiness = 100;
-    
+
     // Initialize ball jump timer if needed.
     if (this.nextBallJumpTime === null) {
-      this.nextBallJumpTime = (this.happiness > 80) ? randomInRange(1, 2) : randomInRange(2, 3);
+      this.nextBallJumpTime =
+        this.happiness > 80 ? randomInRange(1, 2) : randomInRange(2, 3);
     }
     this.ballJumpTimer += deltaTime;
     if (this.ballJumpTimer >= this.nextBallJumpTime) {
@@ -288,79 +399,77 @@ export class Pet {
       const direction = { x: dx, y: dy };
       this.jump(direction);
       this.ballJumpTimer = 0;
-      this.nextBallJumpTime = (this.happiness > 80) ? randomInRange(1, 2.5) : randomInRange(1.5, 3);
+      this.nextBallJumpTime =
+        this.happiness > 80 ? randomInRange(1, 2.5) : randomInRange(1.5, 3);
     }
   }
-  
+
   // Store the ball target so the pet's eyes can track it.
   setBallTarget(pos) {
     this.ballTarget = pos;
   }
-  
+
   // Utility: distance between two points.
   _distance(p1, p2) {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     return Math.sqrt(dx * dx + dy * dy);
   }
-  
+
   // Méthode mise à jour pour générer la description du pet avec la couleur actuelle.
   getMasterPrompt() {
-    // État basé sur fullness et happiness
-    let state = "";
-    if (this.fullness < 50) {
-      state += "hungry";
-    } else {
-      state += "well-fed";
-    }
-    
-    if (this.happiness < 50) {
-      state += " and sad";
-    } else {
-      state += " and happy";
-    }
-    
-    return `A cute ${this.colorName} ${state} pet`;
+    // Improved prompt engineering for a generative AI:
+    let mood = this.happiness < 50 ? "very sad" : "very happy";
+    let hunger =
+      this.fullness < 50 ? "very skelletic, no fur" : "very fat, oily fur";
+    let stateDesc = `a very cute spherical creature that appears ${this.colorName}, with a ${hunger} belly and a ${mood} gaze`;
+    return `Imagine a digital artwork of ${stateDesc}. Spherical, dynamic facial expressions, cute, vibrant, anim style, Cartoon details, artistic composition that accentuates its unique personality.`;
   }
 
   draw(ctx) {
     // Gather peripheral particle positions.
-    let points = this.particles.map(p => ({ x: p.position.x, y: p.position.y }));
+    let points = this.particles.map((p) => ({
+      x: p.position.x,
+      y: p.position.y,
+    }));
     const center = this.center.position;
     points.sort((a, b) => {
-      return Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x);
+      return (
+        Math.atan2(a.y - center.y, a.x - center.x) -
+        Math.atan2(b.y - center.y, b.x - center.x)
+      );
     });
-    
+
     // Draw the soft, smooth blob with Perlin noise texture
     const currentConstraintLength = this.centerConstraints[0].length;
     const scaleFactor = currentConstraintLength / this.baseDistance;
-    
+
     // Define bounds for the drawing
     const bounds = this.calculateBounds(points);
-    
+
     // Create a temporary canvas for the noise texture
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
+    const tempCanvas = document.createElement("canvas");
+    const tempCtx = tempCanvas.getContext("2d");
     tempCanvas.width = bounds.width;
     tempCanvas.height = bounds.height;
-    
+
     // Draw noise texture to the temporary canvas
     const imageData = tempCtx.createImageData(bounds.width, bounds.height);
     for (let y = 0; y < bounds.height; y++) {
       for (let x = 0; x < bounds.width; x++) {
         // Use the external noise function instead of the class method
         const noiseVal = noise(
-          (x + this.noiseOffset + center.x) * this.noiseScale, 
+          (x + this.noiseOffset + center.x) * this.noiseScale,
           (y + this.noiseOffset + center.y) * this.noiseScale,
           this.perm
         );
-        
+
         // Map noise to color variation
         const colorOffset = Math.floor(noiseVal * this.colorVariation);
-        
+
         // Calculate pixel index
         const idx = (y * bounds.width + x) * 4;
-        
+
         // Apply color with variation
         imageData.data[idx] = this.baseColor.r - colorOffset; // Red
         imageData.data[idx + 1] = this.baseColor.g - colorOffset; // Green
@@ -369,7 +478,7 @@ export class Pet {
       }
     }
     tempCtx.putImageData(imageData, 0, 0);
-    
+
     // Now draw the blob with the pattern fill
     // First create a clipping path for the blob shape
     ctx.save();
@@ -385,15 +494,17 @@ export class Pet {
       ctx.quadraticCurveTo(current.x, current.y, mid.x, mid.y);
     }
     ctx.closePath();
-    
+
     // Create pattern from the temporary canvas
-    const pattern = ctx.createPattern(tempCanvas, 'no-repeat');
+    const pattern = ctx.createPattern(tempCanvas, "no-repeat");
     if (pattern) {
       // Position the pattern correctly
-      const patternTransform = new DOMMatrix()
-        .translateSelf(bounds.minX, bounds.minY);
+      const patternTransform = new DOMMatrix().translateSelf(
+        bounds.minX,
+        bounds.minY
+      );
       pattern.setTransform(patternTransform);
-      
+
       // Fill with the pattern
       ctx.fillStyle = pattern;
       ctx.fill();
@@ -402,51 +513,51 @@ export class Pet {
       ctx.fillStyle = `rgb(${this.baseColor.r}, ${this.baseColor.g}, this.baseColor.b)`;
       ctx.fill();
     }
-    
+
     // Draw outline
-    if (window.borderBlurred) {
-      ctx.save();
-      ctx.filter = 'blur(3px) drop-shadow(0 0 6px white)';
-      ctx.lineWidth = 20 * scaleFactor;
-      ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      ctx.lineWidth = 3 * scaleFactor;
-      ctx.strokeStyle = `rgba(${this.baseColor.r}, ${this.baseColor.g}, ${this.baseColor.b}, 0.8)`;
-      ctx.stroke();
-    }
-    
+
+    ctx.save();
+    ctx.filter = "blur(3px) drop-shadow(0 0 6px white)";
+    ctx.lineWidth = 20 * scaleFactor;
+    ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
+    ctx.stroke();
+    ctx.restore();
+
     // Calculate a scaling factor based on the pet's current size relative to its base size
     // Use the current constraint length which is affected by fullness
-  
-    
+
     // Scale base dimensions according to the pet's body size
     const baseEyeOffsetX = 24 * scaleFactor;
     const baseEyeSize = 20 * scaleFactor;
     const baseMouthOffset = 24 * scaleFactor;
-    const baseMouthSize = 12 * scaleFactor;
-    
+    const baseMouthSize = 22 * scaleFactor;
+
     // Draw the pet's face with scaled dimensions
     // Base eye positions.
     const eyeOffsetX = baseEyeOffsetX;
-    let eyeOffsetY = (-6 * scaleFactor) + Math.sin(this.idleTimer * 3) * 1.5 + ((50 - this.happiness) / 50 * 2 * scaleFactor);
+    let eyeOffsetY =
+      -6 * scaleFactor +
+      Math.sin(this.idleTimer * 3) * 1.5 +
+      ((50 - this.happiness) / 50) * 2 * scaleFactor;
     // Compute initial eye and mouth positions (centered on the pet).
     let leftEyeX = this.center.position.x - eyeOffsetX;
     let leftEyeY = this.center.position.y + eyeOffsetY;
     let rightEyeX = this.center.position.x + eyeOffsetX;
     let rightEyeY = this.center.position.y + eyeOffsetY;
     let mouthX = this.center.position.x;
-    let mouthY = this.center.position.y + baseMouthOffset + Math.sin(this.idleTimer * 2) * 2 * scaleFactor;
-    
+    let mouthY =
+      this.center.position.y +
+      baseMouthOffset +
+      Math.sin(this.idleTimer * 2) * 2 * scaleFactor;
+
     // If a ball target exists, increase offsets so the face looks more toward it.
     if (this.ballTarget) {
       const dx = this.ballTarget.x - this.center.position.x;
       const dy = this.ballTarget.y - this.center.position.y;
       const mag = Math.sqrt(dx * dx + dy * dy);
       if (mag > 0) {
-        const eyeOffsetFactor = 40 * scaleFactor;   // Scale the eye movement
-        const mouthOffsetFactor = 40 * scaleFactor;  // Scale the mouth movement
+        const eyeOffsetFactor = 40 * scaleFactor; // Scale the eye movement
+        const mouthOffsetFactor = 40 * scaleFactor; // Scale the mouth movement
         leftEyeX += (dx / mag) * eyeOffsetFactor;
         leftEyeY += (dy / mag) * eyeOffsetFactor;
         rightEyeX += (dx / mag) * eyeOffsetFactor;
@@ -455,9 +566,9 @@ export class Pet {
         mouthY += (dy / mag) * mouthOffsetFactor;
       }
     }
-    
+
     // Draw the eyes with scaled size.
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     if (this.isBlinking) {
       ctx.beginPath();
       ctx.moveTo(leftEyeX - baseEyeSize, leftEyeY);
@@ -470,7 +581,7 @@ export class Pet {
       ctx.arc(leftEyeX, leftEyeY, baseEyeSize, 0, 2 * Math.PI);
       ctx.arc(rightEyeX, rightEyeY, baseEyeSize, 0, 2 * Math.PI);
       ctx.fill();
-      
+
       // Updated pupil drawing: pupils track both ballTarget and foodTarget.
       const pupilOffsetLimit = baseEyeSize * 0.4; // maximum pupil displacement within the eye
       let target = null;
@@ -490,61 +601,91 @@ export class Pet {
         const dy = target.y - this.center.position.y;
         const mag = Math.sqrt(dx * dx + dy * dy);
         if (mag > 0) {
-          pupilOffset = { x: (dx / mag) * pupilOffsetLimit, y: (dy / mag) * pupilOffsetLimit };
+          pupilOffset = {
+            x: (dx / mag) * pupilOffsetLimit,
+            y: (dy / mag) * pupilOffsetLimit,
+          };
         }
       }
       const pupilRadius = baseEyeSize * 0.5;
-      ctx.fillStyle = 'black';
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
       // Left pupil
       ctx.beginPath();
-      ctx.arc(leftEyeX + pupilOffset.x, leftEyeY + pupilOffset.y, pupilRadius, 0, 2 * Math.PI);
+      ctx.arc(
+        leftEyeX + pupilOffset.x,
+        leftEyeY + pupilOffset.y,
+        pupilRadius,
+        0,
+        2 * Math.PI
+      );
       ctx.fill();
       // Right pupil
       ctx.beginPath();
-      ctx.arc(rightEyeX + pupilOffset.x, rightEyeY + pupilOffset.y, pupilRadius, 0, 2 * Math.PI);
+      ctx.arc(
+        rightEyeX + pupilOffset.x,
+        rightEyeY + pupilOffset.y,
+        pupilRadius,
+        0,
+        2 * Math.PI
+      );
       ctx.fill();
     }
-    
+
     // Draw the mouth with scaled size.
-    ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+    ctx.strokeStyle = "rgba(90, 2, 2, 0.79)";
     ctx.lineWidth = 5 * scaleFactor; // Increased stroke weight for the mouth
     ctx.beginPath();
     if (this.happiness > 50) {
       ctx.arc(mouthX, mouthY, baseMouthSize, 0, Math.PI, false);
+      // draw a line in the middle for a smile
+      ctx.moveTo(mouthX - baseMouthSize, mouthY);
+      ctx.lineTo(mouthX + baseMouthSize, mouthY);
+      // fill the mouth with blue color
+      ctx.fillStyle = "rgba(238, 72, 72, 0.65)";
+      ctx.fill();
     } else {
+      // translate the mouth downwards for a sad expression
+      mouthY += 20;
       ctx.arc(mouthX, mouthY, baseMouthSize, Math.PI, 2 * Math.PI, false);
+      // draw a line in the middle for
+      ctx.moveTo(mouthX - baseMouthSize, mouthY);
+      ctx.lineTo(mouthX + baseMouthSize, mouthY);
+      // fill the mouth with blue color
+      ctx.fillStyle = "rgba(238, 72, 72, 0.65)";
+      ctx.fill();
     }
     ctx.stroke();
-    
+
     // Restore previous line width if needed for other drawing operations
     ctx.lineWidth = 3 * scaleFactor;
   }
-  
+
   // Helper to calculate bounds of a set of points
   calculateBounds(points) {
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-    
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
+
     for (const point of points) {
       minX = Math.min(minX, point.x);
       minY = Math.min(minY, point.y);
       maxX = Math.max(maxX, point.x);
       maxY = Math.max(maxY, point.y);
     }
-    
+
     // Add padding
     const padding = 20;
     minX -= padding;
     minY -= padding;
     maxX += padding;
     maxY += padding;
-    
+
     return {
       minX: Math.floor(minX),
       minY: Math.floor(minY),
       width: Math.ceil(maxX - minX),
-      height: Math.ceil(maxY - minY)
+      height: Math.ceil(maxY - minY),
     };
   }
-  
 }

@@ -12,33 +12,37 @@ function sendCanvas(canvas) {
   }
   
   
-  function sendPrompt(text){
+ export function sendPrompt(text){
   
       const formData = new FormData();
       formData.append("prompt",text);
+
+      formData.append("seed", 12345);
   
-      fetch("http://localhost/set_params", {
+      fetch("http://localhost:5000/set_params", {
         method: "POST",
         body: formData,
       });
   }
 
-// New function to log the master prompt from the DOM.
-function logMasterPrompt() {
-  const masterPromptEl = document.getElementById("masterPrompt");
-  if (masterPromptEl) {
-    console.log("Master Prompt:", masterPromptEl.innerText);
-  }
-}
 
   function drawCanvas(){
     setTimeout(()=>{
       let canvas = document.getElementById("gameCanvas");
       sendCanvas(canvas)
-      logMasterPrompt();
       drawCanvas();
-    },1000/20)
+    },1000/30)
   }
+
+  const feedCanvas = document.getElementById('feedCanvas');
+  const ctx = feedCanvas.getContext('2d');
+  const feedImg = new Image();
+  function updateFeed() {
+    feedImg.src = 'http://127.0.0.1:5000/output_feed?dummy=' + Date.now();
+    feedImg.onload = () => ctx.drawImage(feedImg, 0, 0, feedCanvas.width, feedCanvas.height);
+  }
+  setInterval(updateFeed, 1000/30);
+  
 
   window.onload= ()=>{
     drawCanvas();

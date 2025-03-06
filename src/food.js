@@ -3,21 +3,40 @@ import { buildPermutationTable, noise } from './utils/noiseUtils.js';
 
 export class Food {
   constructor(x, y) {
-    // Remplacer la création d'un cercle par un polygone à 3 côtés (triangle)
-    this.body = Bodies.polygon(x, y, 3, 36, { restitution: 0.6, friction: 0.1, label: 'Food' });
+    // Amélioration des propriétés physiques pour faciliter le roulement
+    this.body = Bodies.circle(x, y, 36, { 
+      restitution: 0.4,      // Réduit légèrement le rebond pour plus de stabilité
+      friction: 0.0001,       // Une très petite friction pour mieux rouler
+      frictionAir: 0.00005,   // Très faible résistance à l'air
+      frictionStatic: 0.5,  // Nécessite très peu de force pour commencer à rouler
+      density: 0.001,        // Densité plus faible pour rendre l'objet plus léger
+      label: 'Food' 
+    });
     
-    // Initialize noise parameters for the texture
+    // Initialize properties (keep radius same for texture mapping)
     this.radius = 36;
-    this.noiseScale = 0.1; // Ajusté pour la taille de la nourriture
-    this.noiseOffset = Math.random() * 1000; // Random offset for varied patterns
-    this.colorVariation = 40; // Range of color variation
-    this.baseColor = { r: 255, g: 165, b: 0 }; // orange base
+    this.noiseScale = 0.1;
+    this.noiseOffset = Math.random() * 1000;
+    this.colorVariation = 40;
+    // Change base color to red
+    this.baseColor = { r: 255, g: 0, b: 0 };
     
-    // Nouvelle propriété pour suivre le rebond.
-    this.hasBounced = false;
+    // Nouvelle propriété pour suivre le temps d'apparition
+    this.spawnTime = Date.now();
+    // Indique si la nourriture est prête à être mangée
+    this.isEdible = false;
     
     // Generate permutation table for noise
     this.perm = buildPermutationTable();
+  }
+  
+  // Nouvelle méthode pour vérifier si la nourriture est prête à être mangée
+  update() {
+    const currentTime = Date.now();
+    // La nourriture devient mangeable après 1 seconde
+    if (currentTime - this.spawnTime >= 2000 && !this.isEdible) {
+      this.isEdible = true;
+    }
   }
   
   draw(ctx) {
@@ -54,30 +73,20 @@ export class Food {
         // Calculate pixel index
         const idx = (y * bounds.width + x) * 4;
         
-        // Apply color with variation
-        imageData.data[idx] = this.baseColor.r - colorOffset; // Red
-        imageData.data[idx + 1] = this.baseColor.g - colorOffset; // Green
-        imageData.data[idx + 2] = this.baseColor.b - colorOffset; // Blue
+        // Apply color with variation - plus clair si mangeable
+        const colorMultiplier = this.isEdible ? 0.8 : 1; // Plus clair si mangeable
+        imageData.data[idx] = this.baseColor.r - colorOffset * colorMultiplier; // Red
+        imageData.data[idx + 1] = this.baseColor.g - colorOffset * colorMultiplier; // Green
+        imageData.data[idx + 2] = this.baseColor.b - colorOffset * colorMultiplier; // Blue
         imageData.data[idx + 3] = 255; // Alpha (fully opaque)
       }
     }
     tempCtx.putImageData(imageData, 0, 0);
     
-    // Correction du remplissage : tracer un triangle au lieu d'un cercle
+    // Replace triangle drawing with circle drawing
     ctx.save();
     ctx.beginPath();
-    // Calculer les trois sommets du triangle centré en (pos.x, pos.y)
-    const angleOffset = -Math.PI / 2; // démarrer vers le haut
-    for (let i = 0; i < 3; i++) {
-      const angle = angleOffset + i * (2 * Math.PI / 3);
-      const x = pos.x + this.radius * Math.cos(angle);
-      const y = pos.y + this.radius * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    }
+    ctx.arc(pos.x, pos.y, this.radius, 0, Math.PI * 2);
     ctx.closePath();
     
     // Create pattern from the temporary canvas
@@ -97,19 +106,38 @@ export class Food {
       ctx.fill();
     }
     
-    // Draw outline
-    ctx.lineWidth = 1;
+    // Modification: Draw brown stem that rotates with the apple
+    ctx.save();
+    ctx.beginPath();
+    // Calculate stem position using the body's angle
+    const stemBaseX = pos.x + Math.sin(this.body.angle) * this.radius;
+    const stemBaseY = pos.y - Math.cos(this.body.angle) * this.radius;
+    // Draw stem from the edge of the circle outward
+    const stemLength = 20;
+    const stemEndX = pos.x + Math.sin(this.body.angle) * (this.radius + stemLength);
+    const stemEndY = pos.y - Math.cos(this.body.angle) * (this.radius + stemLength);
+    ctx.moveTo(stemBaseX, stemBaseY);
+    ctx.lineTo(stemEndX, stemEndY);
     ctx.strokeStyle = 'brown';
-    if (window.borderBlurred) {
-      ctx.save();
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
+    
+    // Draw outline
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'brown';
+
+    ctx.save();
+    // Ajouter un effet de pulsation quand la nourriture est prête à être mangée
+    if (this.isEdible) {
+      ctx.filter = 'blur(4px) drop-shadow(0 0 8px white)';
+      ctx.lineWidth = 5 + Math.sin(Date.now() / 200) * 2; // Effet de pulsation
+    } else {
       ctx.filter = 'blur(4px) drop-shadow(0 0 3px white)';
       ctx.lineWidth = 5;
-      ctx.strokeStyle = pattern; // Utilise le pattern noise pour le contour
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      ctx.stroke();
     }
+    ctx.strokeStyle = pattern;
+    ctx.stroke();
     ctx.restore();
   }
 }
