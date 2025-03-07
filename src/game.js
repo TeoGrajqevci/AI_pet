@@ -445,7 +445,7 @@ export class Game {
     
     // Définir le style du texte
     this.ctx.textAlign = "center";
-    this.ctx.font = "bold 70px arial"; // Police plus grande pour plus d'impact
+    this.ctx.font = "bold 65px arial"; // Police plus grande pour plus d'impact
     
     // Ajouter une ombre au texte
     this.ctx.shadowColor = "rgba(0, 0, 0, 0.7)"; // Ombre plus foncée
@@ -455,7 +455,7 @@ export class Game {
     
     // Dessiner le texte "Game Over" avec bordure
     this.ctx.fillStyle = "white";
-    this.ctx.fillText("Game Over", centerX, centerY);
+    this.ctx.fillText("GAME OVER", centerX, centerY);
     
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetX = 0;
@@ -676,7 +676,7 @@ export class Game {
     
     // Set text style
     this.ctx.textAlign = "center";
-    this.ctx.font = "bold 60px arial";
+    this.ctx.font = "bold 50px arial";
     
     // Add shadow to text
     this.ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
@@ -686,8 +686,8 @@ export class Game {
     
     // Draw text with border
     this.ctx.fillStyle = "white";
-    this.ctx.fillText("Press any key", centerX, centerY - lineHeight / 2);
-    this.ctx.fillText("to start", centerX, centerY + lineHeight / 2);
+    this.ctx.fillText("PRESS ANY KEY", centerX, centerY - lineHeight / 2);
+    this.ctx.fillText("TO START", centerX, centerY + lineHeight / 2);
     
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetX = 0;
@@ -695,8 +695,8 @@ export class Game {
     
     this.ctx.strokeStyle = "black";
     this.ctx.lineWidth = 2;
-    this.ctx.strokeText("Press any key", centerX, centerY - lineHeight / 2);
-    this.ctx.strokeText("to start", centerX, centerY + lineHeight / 2);
+    this.ctx.strokeText("PRESS ANY KEY", centerX, centerY - lineHeight / 2);
+    this.ctx.strokeText("TO START", centerX, centerY + lineHeight / 2);
     
     this.ctx.restore();
   }
