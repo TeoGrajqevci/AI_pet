@@ -287,7 +287,7 @@ export class Game {
   update(deltaTime) {
     // console.log(deltaTime);
 
-    const steps = 50; // Increased simulation steps per frame
+    const steps = 2; // Increased simulation steps per frame
     for (let i = 0; i < steps; i++) {
       Engine.update(this.engine, (deltaTime * 1000) / steps);
     }

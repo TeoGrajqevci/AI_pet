@@ -159,7 +159,7 @@ export class Pet {
 
   // Modified jump: if a direction is provided, jump toward that; else random upward.
   jump(direction) {
-    const forceMagnitude = 40.0; // Force magnitude set to 1.2
+    const forceMagnitude = 3.5; // Force magnitude set to 1.2
     let force;
     if (direction) {
       const mag = Math.sqrt(
@@ -244,19 +244,52 @@ export class Pet {
     // console.log("Soft body broken:", this.softBodyBroken);
   }
 
-  // NEW: Check if any particle deviates significantly from the center.
+  // Vérifie si le corps mou est cassé en examinant la formation circulaire
   checkBreak() {
     if (this.softBodyBroken) return;
-    const expectedLength = this.centerConstraints[0].length;
-    const tolerance = 3;
-    for (const particle of this.particles) {
-      const d = this._distance(this.center.position, particle.position);
-      if (d > expectedLength * tolerance) {
-        this.softBodyBroken = true;
-        this.resetGeometry(); // Reset the pet's geometry.
-        if (this.onBreak) this.onBreak();
-        break;
+    
+    const expectedRadius = this.centerConstraints[0].length;
+    const radiusTolerance = 0.7; // 40% de tolérance sur le rayon
+    const angleTolerance = 0.8; // 50% de tolérance sur l'espacement angulaire
+    
+    // Obtenir les positions des particules par rapport au centre et leurs angles
+    const particlesData = this.particles.map(p => {
+      const dx = p.position.x - this.center.position.x;
+      const dy = p.position.y - this.center.position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx);
+      return { particle: p, distance, angle };
+    });
+    
+    // Trier par angle pour vérifier la distribution angulaire
+    const sortedByAngle = [...particlesData].sort((a, b) => a.angle - b.angle);
+    
+    // Compter les déviations de rayon et d'espacement angulaire
+    let deviations = 0;
+    const expectedAngularSpacing = (2 * Math.PI) / this.numPoints;
+    
+    for (let i = 0; i < this.numPoints; i++) {
+      // Vérifier la déviation du rayon
+      if (Math.abs(particlesData[i].distance - expectedRadius) > expectedRadius * radiusTolerance) {
+        deviations++;
       }
+      
+      // Vérifier la déviation de l'espacement angulaire
+      const currentAngle = sortedByAngle[i].angle;
+      const nextAngle = sortedByAngle[(i + 1) % this.numPoints].angle;
+      let spacing = nextAngle - currentAngle;
+      if (spacing < 0) spacing += 2 * Math.PI;
+      
+      if (Math.abs(spacing - expectedAngularSpacing) > expectedAngularSpacing * angleTolerance) {
+        deviations++;
+      }
+    }
+    
+    // Si plus d'un tiers des vérifications ont échoué, considérer le corps comme cassé
+    if (deviations > this.numPoints * 2 / 3) { // Nous vérifions 2 choses par particule
+      this.softBodyBroken = true;
+      this.resetGeometry();
+      if (this.onBreak) this.onBreak();
     }
   }
 
@@ -276,8 +309,8 @@ export class Pet {
     this.centerConstraints = [];
     for (let i = 0; i < this.numPoints; i++) {
       const angle = ((2 * Math.PI) / this.numPoints) * i;
-      const px = this.x + this.baseDistance * Math.cos(angle);
-      const py = this.y + this.baseDistance * Math.sin(angle);
+      const px = this.x + (this.baseDistance) * Math.cos(angle);
+      const py = this.y + (this.baseDistance) * Math.sin(angle);
       const particle = Bodies.circle(px, py, 16, {
         friction: 0.1,
         restitution: 0.8,
@@ -291,7 +324,7 @@ export class Pet {
         bodyA: this.center,
         bodyB: particle,
         length: this.baseDistance,
-        stiffness: 0.01,
+        stiffness: 0.1,
       });
       this.centerConstraints.push(constraint);
       Composite.add(this.composite, constraint);
