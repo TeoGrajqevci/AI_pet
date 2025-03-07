@@ -32,9 +32,11 @@ export class Pet {
     });
     Composite.add(this.composite, this.center);
 
-    // Create peripheral particles in a circle and assign them the same group.
+    // ----- REWRITTEN SOFTBODY LOGIC -----
+    // Create peripheral particles on a circle and add stable constraints.
     this.particles = [];
     this.centerConstraints = [];
+    this.edgeConstraints = [];
     for (let i = 0; i < this.numPoints; i++) {
       const angle = ((2 * Math.PI) / this.numPoints) * i;
       const px = x + this.baseDistance * Math.cos(angle);
@@ -47,45 +49,29 @@ export class Pet {
       });
       this.particles.push(particle);
       Composite.add(this.composite, particle);
-
-      const constraint = Constraint.create({
+      // Constraint from center to particle.
+      const cConstraint = Constraint.create({
         bodyA: this.center,
         bodyB: particle,
         length: this.baseDistance,
-        stiffness: 0.01,
+        stiffness: 0.02,
       });
-      this.centerConstraints.push(constraint);
-      Composite.add(this.composite, constraint);
+      this.centerConstraints.push(cConstraint);
+      Composite.add(this.composite, cConstraint);
     }
-
-    // Create constraints between adjacent peripheral particles.
-    this.edgeConstraints = [];
+    // Edge constraints: only connect adjacent particles.
     for (let i = 0; i < this.numPoints; i++) {
-      /*
-      for (let j = 0; j < this.numPoints; j++) {
-        let distX = this.particles[j].position.x - this.particles[i].position.x;
-        let distY = this.particles[j].position.y - this.particles[i].position.y;
-        let dist = Math.sqrt(distX * distX + distY * distY);
-        const constraint = Constraint.create({
-          bodyA: this.particles[i],
-          bodyB: this.particles[j],
-          length: dist,
-          stiffness: 0.1,
-        });
-        this.edgeConstraints.push(constraint);
-        Composite.add(this.composite, constraint);
-      }*/
-
-      const nextIndex = (i + 1) % this.numPoints;
-      const constraint = Constraint.create({
+      const next = this.particles[(i + 1) % this.numPoints];
+      const edgeConstraint = Constraint.create({
         bodyA: this.particles[i],
-        bodyB: this.particles[nextIndex],
+        bodyB: next,
         length: 2 * this.baseDistance * Math.sin(Math.PI / this.numPoints),
-        stiffness: 0.3,
+        stiffness: 0.05,
       });
-      this.edgeConstraints.push(constraint);
-      Composite.add(this.composite, constraint);
+      this.edgeConstraints.push(edgeConstraint);
+      Composite.add(this.composite, edgeConstraint);
     }
+    // ----- END OF SOFTBODY LOGIC -----
 
     // (Rest of your initialization for idleTimer, blinkTimer, etc.)
     this.idleTimer = 0;
@@ -159,7 +145,7 @@ export class Pet {
 
   // Modified jump: if a direction is provided, jump toward that; else random upward.
   jump(direction) {
-    const forceMagnitude = 3.5; // Force magnitude set to 1.2
+    const forceMagnitude = 1.9; // Force magnitude set to 1.2
     let force;
     if (direction) {
       const mag = Math.sqrt(
@@ -247,46 +233,53 @@ export class Pet {
   // Vérifie si le corps mou est cassé en examinant la formation circulaire
   checkBreak() {
     if (this.softBodyBroken) return;
-    
+
     const expectedRadius = this.centerConstraints[0].length;
-    const radiusTolerance = 0.7; // 40% de tolérance sur le rayon
-    const angleTolerance = 0.8; // 50% de tolérance sur l'espacement angulaire
-    
+    const radiusTolerance = 0.9; // 40% de tolérance sur le rayon
+    const angleTolerance = 0.9; // 50% de tolérance sur l'espacement angulaire
+
     // Obtenir les positions des particules par rapport au centre et leurs angles
-    const particlesData = this.particles.map(p => {
+    const particlesData = this.particles.map((p) => {
       const dx = p.position.x - this.center.position.x;
       const dy = p.position.y - this.center.position.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       const angle = Math.atan2(dy, dx);
       return { particle: p, distance, angle };
     });
-    
+
     // Trier par angle pour vérifier la distribution angulaire
     const sortedByAngle = [...particlesData].sort((a, b) => a.angle - b.angle);
-    
+
     // Compter les déviations de rayon et d'espacement angulaire
     let deviations = 0;
     const expectedAngularSpacing = (2 * Math.PI) / this.numPoints;
-    
+
     for (let i = 0; i < this.numPoints; i++) {
       // Vérifier la déviation du rayon
-      if (Math.abs(particlesData[i].distance - expectedRadius) > expectedRadius * radiusTolerance) {
+      if (
+        Math.abs(particlesData[i].distance - expectedRadius) >
+        expectedRadius * radiusTolerance
+      ) {
         deviations++;
       }
-      
+
       // Vérifier la déviation de l'espacement angulaire
       const currentAngle = sortedByAngle[i].angle;
       const nextAngle = sortedByAngle[(i + 1) % this.numPoints].angle;
       let spacing = nextAngle - currentAngle;
       if (spacing < 0) spacing += 2 * Math.PI;
-      
-      if (Math.abs(spacing - expectedAngularSpacing) > expectedAngularSpacing * angleTolerance) {
+
+      if (
+        Math.abs(spacing - expectedAngularSpacing) >
+        expectedAngularSpacing * angleTolerance
+      ) {
         deviations++;
       }
     }
-    
+
     // Si plus d'un tiers des vérifications ont échoué, considérer le corps comme cassé
-    if (deviations > this.numPoints * 2 / 3) { // Nous vérifions 2 choses par particule
+    if (deviations > (this.numPoints * 2) / 3) {
+      // Nous vérifions 2 choses par particule
       this.softBodyBroken = true;
       this.resetGeometry();
       if (this.onBreak) this.onBreak();
@@ -309,8 +302,8 @@ export class Pet {
     this.centerConstraints = [];
     for (let i = 0; i < this.numPoints; i++) {
       const angle = ((2 * Math.PI) / this.numPoints) * i;
-      const px = this.x + (this.baseDistance) * Math.cos(angle);
-      const py = this.y + (this.baseDistance) * Math.sin(angle);
+      const px = this.x + this.baseDistance * Math.cos(angle);
+      const py = this.y + this.baseDistance * Math.sin(angle);
       const particle = Bodies.circle(px, py, 16, {
         friction: 0.1,
         restitution: 0.8,
@@ -324,7 +317,7 @@ export class Pet {
         bodyA: this.center,
         bodyB: particle,
         length: this.baseDistance,
-        stiffness: 0.1,
+        stiffness: 0.01,
       });
       this.centerConstraints.push(constraint);
       Composite.add(this.composite, constraint);
@@ -338,7 +331,7 @@ export class Pet {
         bodyA: this.particles[i],
         bodyB: this.particles[nextIndex],
         length: 2 * this.baseDistance * Math.sin(Math.PI / this.numPoints),
-        stiffness: 0.3,
+        stiffness: 0.03,
       });
       this.edgeConstraints.push(constraint);
       Composite.add(this.composite, constraint);
