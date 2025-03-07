@@ -11,11 +11,16 @@
       margin: 0;
       padding: 0;
     }
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
     canvas {
       background: #ffffff;
       display: block;
-      margin: 0px auto;
-      border: 1px solid #ccc;
+      margin: 0;
+      border: 3px solid #00000000;
       width: 1024px; 
       height: 1024px; 
       image-rendering: crisp-edges;
@@ -29,7 +34,6 @@
       margin-top: 20px;
     }
     button {
-  /* Create a bold, bright gradient background for an arcade feel */
   background: linear-gradient(145deg, #ffcc00, #ff9900);
   border: 2px solid #cc6600;
   border-radius: 12px;
@@ -39,7 +43,6 @@
   font-weight: bold;
   color: #fff;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
-  /* Create a layered shadow to simulate depth */
   box-shadow: 0 6px 0 #cc6600, 0 8px 12px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -47,7 +50,7 @@
 }
 
 button:active {
-  /* Simulate a "pressed" button by translating it downwards and reducing the shadow */
+
   transform: translateY(6px);
   box-shadow: 0 2px 0 #cc6600, 0 4px 6px rgba(0, 0, 0, 0.3);
 }
@@ -60,16 +63,19 @@ button:active {
   
 </head>
 <body>
-  <canvas id="gameCanvas" width="512" height="512"></canvas>
-  <!-- Stats panel showing current fullness and happiness -->
+  <div class="canvas-container">
+    <canvas id="gameCanvas" width="512" height="512"></canvas>
+    <canvas id="feedCanvas" width="1280" height="960"></canvas>
+  </div>
+ 
   <div id="stats">Fullness: 50 | Happiness: 50</div>
   <div id="controls">
     <button id="feedBtn">Feed</button>
     <button id="playBtn">Play</button>
   </div>
-  <!-- Nouvel élément pour afficher le master prompt -->
+
   <div id="masterPrompt" style="margin-top:20px; font-size:18px; color:#333;"></div>
-  <!-- Entry point -->
+  
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
